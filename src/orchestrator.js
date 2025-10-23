@@ -2,6 +2,7 @@ const axios = require('axios');
 const logger = require('./utils/logger');
 const { deduplicateRecords, normalizeRecord } = require('./utils/deduplication');
 const { respectsRobotsTxt } = require('./utils/robots');
+const { collectFromAllSources } = require('./collectors');
 
 // System prompt for the LLM agent
 const SYSTEM_PROMPT = `Role: You are a compliant, source-first web research and data-extraction agent.
@@ -189,50 +190,31 @@ function parseLLMResponse(response) {
 
 /**
  * Main orchestration function
+ * Now uses REAL data collectors (Google Places, OpenCorporates) instead of pure LLM
  */
 async function orchestrate(params) {
   const startTime = Date.now();
   logger.info('Orchestration started', params);
 
   try {
-    // Build prompts
-    const userPrompt = buildUserPrompt(params);
+    const { category, geography, maxResults = 100 } = params;
 
-    // Call LLM for research orchestration
-    logger.info('Calling LLM for orchestration...');
-    const llmResponse = await callLLM(SYSTEM_PROMPT, userPrompt);
-
-    // Parse response
-    logger.info('Parsing LLM response...');
-    let result = parseLLMResponse(llmResponse);
-
-    // Validate and normalize records
-    if (result.rows && Array.isArray(result.rows)) {
-      logger.info(`Processing ${result.rows.length} raw records...`);
-
-      // Normalize each record
-      result.rows = result.rows.map(normalizeRecord);
-
-      // Deduplicate
-      const beforeDedup = result.rows.length;
-      result.rows = deduplicateRecords(result.rows);
-      const afterDedup = result.rows.length;
-
-      logger.info(`Deduplication: ${beforeDedup} → ${afterDedup} records (${beforeDedup - afterDedup} duplicates removed)`);
-
-      // Update meta
-      result.meta.total_found = afterDedup;
-      result.meta.deduplication_applied = true;
-      result.meta.duplicates_removed = beforeDedup - afterDedup;
-    }
+    // Use real data collectors to fetch actual business data
+    logger.info(`Collecting real business data for: ${category} in ${geography}`);
+    const result = await collectFromAllSources({
+      category,
+      geography,
+      maxResults
+    });
 
     // Add execution metadata
-    result.meta.execution_time_ms = Date.now() - startTime;
-    result.meta.orchestrator_version = '1.0.0';
+    result.meta.orchestrator_version = '2.0.0';
+    result.meta.method = 'real-data-collection';
 
     logger.info('Orchestration completed successfully', {
       totalRecords: result.meta.total_found,
-      executionTime: result.meta.execution_time_ms
+      executionTime: result.meta.execution_time_ms,
+      sources: result.meta.sources_used
     });
 
     return result;
