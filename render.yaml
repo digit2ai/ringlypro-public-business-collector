@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: ringlypro-public-business-collector
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MAX_REQUESTS_PER_MINUTE
+        value: 10
+      - key: RESPECT_ROBOTS_TXT
+        value: true
+      - key: USER_AGENT
+        value: RinglyProBusinessCollector/1.0 (+https://ringlypro.com/collector)
+      # Add these in Render Dashboard (they're secrets):
+      # - OPENAI_API_KEY
+      # - ANTHROPIC_API_KEY
+      # - AWS_ACCESS_KEY_ID (optional)
+      # - AWS_SECRET_ACCESS_KEY (optional)
+      # - S3_BUCKET (optional)
+
+# Optional: Scheduled job to test the service
+# cronJobs:
+#   - name: health-check-cron
+#     schedule: "0 */6 * * *"  # Every 6 hours
+#     command: "curl -sS $RENDER_SERVICE_HOST/health"
