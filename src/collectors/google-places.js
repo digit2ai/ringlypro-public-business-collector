@@ -1,6 +1,7 @@
 // Google Places API collector for real business data
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { optimizeSearchQuery } = require('../utils/industry-mapper');
 
 /**
  * Fetch businesses from Google Places API
@@ -49,12 +50,14 @@ async function fetchFromGooglePlaces({ category, location, maxResults = 100 }) {
 
 /**
  * Generate multiple search queries to get more than 60 results
+ * Uses industry mapper to optimize search terms for Google Places
  */
 function generateSearchQueries(category, location, maxResults) {
   const queries = [];
 
-  // Main query
-  queries.push(`${category} in ${location}`);
+  // Main query - optimized using industry mapper
+  const optimizedQuery = optimizeSearchQuery(category, location);
+  queries.push(optimizedQuery);
 
   // If we need more than 60 results, add location-specific queries
   if (maxResults > 60) {
@@ -63,16 +66,23 @@ function generateSearchQueries(category, location, maxResults) {
 
     if (parts.length > 1) {
       // Has city and state: "Tampa, FL"
-      queries.push(`${category} ${parts[0]}`); // "lawyers Tampa"
-      queries.push(`${category} near ${parts[0]}`); // "lawyers near Tampa"
+      const cityQuery = optimizeSearchQuery(category, parts[0]);
+      queries.push(cityQuery);
+
+      // Extract just the business type without location
+      const businessType = optimizeSearchQuery(category, '').replace(' in ', '').replace(' service', ' service');
+      queries.push(`${businessType} near ${parts[0]}`);
     } else {
       // Single location: "Florida" or "Tampa"
-      queries.push(`${category} ${location}`);
-      queries.push(`${category} near ${location}`);
+      queries.push(optimizeSearchQuery(category, location));
+
+      const businessType = optimizeSearchQuery(category, '').replace(' in ', '').replace(' service', ' service');
+      queries.push(`${businessType} near ${location}`);
     }
   }
 
-  return queries.slice(0, Math.ceil(maxResults / 60) + 1);
+  // Remove duplicates and limit
+  return [...new Set(queries)].slice(0, Math.ceil(maxResults / 60) + 1);
 }
 
 /**
