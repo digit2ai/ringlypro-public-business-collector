@@ -21,16 +21,16 @@ async function collectFromAllSources({ category, geography, maxResults = 100 }) 
   const errors = [];
 
   // Priority order: Google Places (most up-to-date) → OpenCorporates (authoritative)
-  const resultsPerSource = Math.ceil(maxResults / 2); // Split quota between sources
+  // Google Places gets full quota since it's the primary source with phone numbers
 
-  // 1. Google Places - Best for current operating businesses
+  // 1. Google Places - Best for current operating businesses with phone numbers
   try {
     if (process.env.GOOGLE_MAPS_API_KEY) {
       logger.info('Fetching from Google Places...');
       const googleResults = await fetchFromGooglePlaces({
         category,
         location: geography,
-        maxResults: resultsPerSource
+        maxResults: maxResults  // Use full quota for Google Places
       });
 
       if (googleResults.length > 0) {
@@ -46,24 +46,25 @@ async function collectFromAllSources({ category, geography, maxResults = 100 }) 
     errors.push({ source: 'Google Places', error: error.message });
   }
 
-  // 2. OpenCorporates - Good for registered entities
-  try {
-    logger.info('Fetching from OpenCorporates...');
-    const ocResults = await fetchFromOpenCorporates({
-      category,
-      location: geography,
-      maxResults: resultsPerSource
-    });
-
-    if (ocResults.length > 0) {
-      allResults.push(...ocResults);
-      sourcesUsed.push('OpenCorporates');
-      logger.info(`✓ OpenCorporates: ${ocResults.length} results`);
-    }
-  } catch (error) {
-    logger.error('✗ OpenCorporates error:', error.message);
-    errors.push({ source: 'OpenCorporates', error: error.message });
-  }
+  // 2. OpenCorporates - DISABLED: Doesn't provide phone numbers needed for outbound calling
+  // Only Google Places provides the phone numbers we need
+  // try {
+  //   logger.info('Fetching from OpenCorporates...');
+  //   const ocResults = await fetchFromOpenCorporates({
+  //     category,
+  //     location: geography,
+  //     maxResults: Math.ceil(maxResults / 2)
+  //   });
+  //
+  //   if (ocResults.length > 0) {
+  //     allResults.push(...ocResults);
+  //     sourcesUsed.push('OpenCorporates');
+  //     logger.info(`✓ OpenCorporates: ${ocResults.length} results`);
+  //   }
+  // } catch (error) {
+  //   logger.error('✗ OpenCorporates error:', error.message);
+  //   errors.push({ source: 'OpenCorporates', error: error.message });
+  // }
 
   // 3. Deduplicate combined results
   logger.info(`Deduplicating ${allResults.length} results...`);

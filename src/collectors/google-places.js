@@ -18,13 +18,75 @@ async function fetchFromGooglePlaces({ category, location, maxResults = 100 }) {
     return [];
   }
 
-  const results = [];
-  let nextPageToken = null;
-  const query = `${category} in ${location}`;
+  const allResults = [];
+
+  // Google Places API limitation: max 60 results per query (3 pages × 20 results)
+  // To get 100+ results, we need to make multiple queries with location variations
+  const queries = generateSearchQueries(category, location, maxResults);
 
   try {
-    // Google Places returns max 20 results per request, use pagination
-    while (results.length < maxResults) {
+    for (const query of queries) {
+      if (allResults.length >= maxResults) break;
+
+      const remaining = maxResults - allResults.length;
+      const queryResults = await fetchSingleQuery(query, category, apiKey, remaining);
+      allResults.push(...queryResults);
+
+      // Small delay between queries to avoid rate limiting
+      if (allResults.length < maxResults) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    logger.info(`Collected ${allResults.length} total businesses from Google Places`);
+    return allResults;
+
+  } catch (error) {
+    logger.error('Error fetching from Google Places:', error.message);
+    return allResults; // Return partial results
+  }
+}
+
+/**
+ * Generate multiple search queries to get more than 60 results
+ */
+function generateSearchQueries(category, location, maxResults) {
+  const queries = [];
+
+  // Main query
+  queries.push(`${category} in ${location}`);
+
+  // If we need more than 60 results, add location-specific queries
+  if (maxResults > 60) {
+    // Parse location to get state/city
+    const parts = location.split(',').map(p => p.trim());
+
+    if (parts.length > 1) {
+      // Has city and state: "Tampa, FL"
+      queries.push(`${category} ${parts[0]}`); // "lawyers Tampa"
+      queries.push(`${category} near ${parts[0]}`); // "lawyers near Tampa"
+    } else {
+      // Single location: "Florida" or "Tampa"
+      queries.push(`${category} ${location}`);
+      queries.push(`${category} near ${location}`);
+    }
+  }
+
+  return queries.slice(0, Math.ceil(maxResults / 60) + 1);
+}
+
+/**
+ * Fetch results from a single Google Places query
+ */
+async function fetchSingleQuery(query, category, apiKey, maxResults = 60) {
+  const results = [];
+  let nextPageToken = null;
+
+  logger.info(`Fetching query: "${query}"`);
+
+  try {
+    // Google Places returns max 20 results per request, use pagination (max 3 pages = 60)
+    while (results.length < maxResults && results.length < 60) {
       const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
       const params = {
         query,
@@ -102,11 +164,11 @@ async function fetchFromGooglePlaces({ category, location, maxResults = 100 }) {
       }
     }
 
-    logger.info(`Collected ${results.length} businesses from Google Places`);
+    logger.info(`Query "${query}" returned ${results.length} businesses`);
     return results;
 
   } catch (error) {
-    logger.error('Error fetching from Google Places:', error.message);
+    logger.error(`Error fetching query "${query}":`, error.message);
     return results; // Return partial results
   }
 }
