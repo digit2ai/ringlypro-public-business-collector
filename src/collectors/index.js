@@ -87,7 +87,12 @@ async function collectFromAllSources({ category, geography, maxResults = 100 }) 
       generated_at: new Date().toISOString(),
       sources_used: sourcesUsed,
       execution_time_ms: executionTime,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      debug: {
+        api_key_configured: !!process.env.GOOGLE_MAPS_API_KEY,
+        results_before_dedup: allResults.length,
+        duplicates_removed: allResults.length - deduplicated.length
+      }
     },
     rows: sorted
   };

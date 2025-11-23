@@ -115,7 +115,15 @@ async function fetchSingleQuery(query, category, apiKey, maxResults = 60) {
       const data = response.data;
 
       if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-        logger.error(`Google Places API error: ${data.status} - ${data.error_message || ''}`);
+        const errorMsg = `Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`;
+        logger.error(errorMsg);
+
+        // Throw error for critical issues (invalid key, billing, etc.)
+        if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+          throw new Error(errorMsg);
+        }
+
+        // For other errors, just break and return partial results
         break;
       }
 
