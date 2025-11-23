@@ -19,11 +19,13 @@ services:
       - key: USER_AGENT
         value: RinglyProBusinessCollector/1.0 (+https://ringlypro.com/collector)
       # Add these in Render Dashboard (they're secrets):
-      # - OPENAI_API_KEY
-      # - ANTHROPIC_API_KEY
-      # - AWS_ACCESS_KEY_ID (optional)
-      # - AWS_SECRET_ACCESS_KEY (optional)
-      # - S3_BUCKET (optional)
+      # - GOOGLE_MAPS_API_KEY (REQUIRED for data collection)
+      # - OPENCORPORATES_API_KEY (optional backup data source)
+      # - OPENAI_API_KEY (optional for LLM orchestration)
+      # - ANTHROPIC_API_KEY (optional for LLM orchestration)
+      # - AWS_ACCESS_KEY_ID (optional for S3 storage)
+      # - AWS_SECRET_ACCESS_KEY (optional for S3 storage)
+      # - S3_BUCKET (optional for S3 storage)
 
 # Optional: Scheduled job to test the service
 # cronJobs:

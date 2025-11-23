@@ -33,6 +33,35 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Diagnostic endpoint to check API key configuration
+app.get('/diagnostics', (req, res) => {
+  const hasGoogleMapsKey = !!process.env.GOOGLE_MAPS_API_KEY;
+  const hasOpenCorporatesKey = !!process.env.OPENCORPORATES_API_KEY;
+  const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+  const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
+
+  res.json({
+    status: 'ok',
+    environment: process.env.NODE_ENV,
+    data_sources_configured: {
+      google_maps: hasGoogleMapsKey,
+      opencorporates: hasOpenCorporatesKey
+    },
+    llm_sources_configured: {
+      openai: hasOpenAIKey,
+      anthropic: hasAnthropicKey
+    },
+    api_key_prefixes: {
+      google_maps: hasGoogleMapsKey ? process.env.GOOGLE_MAPS_API_KEY.substring(0, 10) + '...' : 'NOT_SET',
+      opencorporates: hasOpenCorporatesKey ? 'SET' : 'NOT_SET'
+    },
+    ready_for_collection: hasGoogleMapsKey || hasOpenCorporatesKey,
+    recommendation: hasGoogleMapsKey ?
+      'Google Maps API configured - ready to collect data' :
+      'WARNING: No data source API keys configured. Add GOOGLE_MAPS_API_KEY to environment variables.'
+  });
+});
+
 // Main collection endpoint
 app.get('/run', async (req, res) => {
   try {
