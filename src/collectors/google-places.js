@@ -152,7 +152,7 @@ async function fetchSingleQuery(query, category, apiKey, maxResults = 60) {
           city: extractCity(place.formatted_address),
           state: extractState(place.formatted_address),
           postal_code: extractZip(place.formatted_address),
-          country: 'USA',
+          country: 'US',
           phone: detailedInfo?.formatted_phone_number || detailedInfo?.international_phone_number || null,
           email: null, // Google Places doesn't provide email
           website: detailedInfo?.website || null,
